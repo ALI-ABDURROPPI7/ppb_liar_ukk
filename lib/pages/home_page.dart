@@ -24,6 +24,9 @@ class _HomePageState extends State<HomePage> {
 
   String? selectedCategory;
 
+  final searchC = TextEditingController();
+
+
   @override
   void initState() {
     super.initState();
@@ -48,9 +51,7 @@ class _HomePageState extends State<HomePage> {
   filterByCategory(String id){
     setState(() {
       selectedCategory = id;
-      products = allProducts.where((p){
-        return p["id_kategori"].toString() == id;
-      }).toList();
+      products = allProducts.where((p) => p["id_kategori"].toString() == id).toList();
     });
   }
 
@@ -60,7 +61,6 @@ class _HomePageState extends State<HomePage> {
       products = allProducts;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -83,30 +83,21 @@ class _HomePageState extends State<HomePage> {
       body: pages[currentIndex],
 
       floatingActionButton: currentIndex == 0
-        ? FloatingActionButton(
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddProductPage())
-              );
-              loadProducts();
-            },
-            child: const Icon(Icons.add),
-          )
-        : null,
+          ? FloatingActionButton(
+        onPressed: () async {
+          
+          final res = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddProductPage())
+          );
 
+          if(res == true){
+            loadProducts();
+          }
 
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: (i){
-          setState(()=> currentIndex = i);
         },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.store), label: "Toko"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Akun"),
-        ],
-      ),
+      )
+          : null,
 
     );
   }
@@ -121,6 +112,35 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
 
+        const SizedBox(height: 8),
+
+        // SEARCH
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: TextField(
+            controller: searchC,
+            onChanged: (v){
+              v = v.toLowerCase();
+              setState(() {
+                products = allProducts.where((p){
+                  return p["nama_produk"].toString().toLowerCase().contains(v);
+                }).toList();
+              });
+            },
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: "Cari produk...",
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12)
+              )
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
         /// CATEGORY
         SizedBox(
           height: 90,
@@ -130,62 +150,27 @@ class _HomePageState extends State<HomePage> {
 
               GestureDetector(
                 onTap: resetFilter,
-                child: Container(
-                  margin: const EdgeInsets.all(10),
-                  padding: const EdgeInsets.all(10),
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: selectedCategory == null
-                      ? Colors.blue.shade100
-                      : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.all_inclusive),
-                      SizedBox(height: 4),
-                      Text("Semua", style: TextStyle(fontSize: 11))
-                    ],
-                  ),
+                child: categoryCard(
+                  active: selectedCategory == null,
+                  title: "Semua",
                 ),
               ),
 
               ...categories.map((c){
-
                 return GestureDetector(
                   onTap: ()=> filterByCategory("${c['id']}"),
-                  child: Container(
-                    margin: const EdgeInsets.all(10),
-                    padding: const EdgeInsets.all(10),
-                    width: 80,
-                    decoration: BoxDecoration(
-                      color: selectedCategory == "${c['id']}"
-                        ? Colors.blue.shade300
-                        : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.category),
-                        const SizedBox(height: 4),
-                        Text(
-                          c['nama_kategori'],
-                          style: const TextStyle(fontSize: 11),
-                          textAlign: TextAlign.center,
-                        )
-                      ],
-                    ),
+                  child: categoryCard(
+                    active: selectedCategory == "${c['id']}",
+                    title: c['nama_kategori'],
                   ),
                 );
-
               }).toList(),
-
             ],
           ),
         ),
 
+
+        const SizedBox(height: 6),
 
         Expanded(
           child: GridView.builder(
@@ -200,14 +185,10 @@ class _HomePageState extends State<HomePage> {
             itemBuilder: (ctx, i){
 
               final p = products[i];
-
-              final img = p['gambar'] != null && p['gambar'] != ""
-                  ? p['gambar']
-                  : "https://via.placeholder.com/300?text=No+Image";
-
+              final String img = (p['gambar'] ?? "").toString();
 
               return InkWell(
-                onTap: () {
+                onTap: (){
                   Navigator.push(context,
                       MaterialPageRoute(builder: (_) => DetailPage(product: p))
                   );
@@ -215,22 +196,32 @@ class _HomePageState extends State<HomePage> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white,
-                      border: Border.all(color: Colors.black12)
+                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.white,
+                    boxShadow: const[
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 5,
+                      )
+                    ]
                   ),
                   child: Column(
                     children: [
 
                       Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              img,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                            ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: img == ""
+                              ? Container(
+                            color: Colors.grey.shade300,
+                            child: const Center(child: Text("No Image")),
                           )
+                              : Image.network(
+                            img,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 7),
@@ -257,7 +248,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               );
-
             },
           ),
         )
@@ -265,6 +255,30 @@ class _HomePageState extends State<HomePage> {
       ],
     );
 
+  }
+
+  // CARD KATEGORI REUSABLE
+  Widget categoryCard({required bool active, required String title}) {
+    return Container(
+      margin: const EdgeInsets.only(left:10),
+      padding: const EdgeInsets.all(10),
+      width: 90,
+      decoration: BoxDecoration(
+        color: active ? Colors.blue.shade400 : Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 11,
+            color: active ? Colors.white : Colors.black,
+            fontWeight: active ? FontWeight.bold : FontWeight.normal
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
   }
 
 }
